@@ -45,6 +45,10 @@
     <SupportedOSPlatformVersion Condition=" '$(_MvxTargetPlatformIstvOS)' == 'True' ">10.0</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition=" '$(_MvxTargetPlatformIsMacCatalyst)' == 'True' ">13.2</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition=" '$(_MvxTargetPlatformIsAndroid)' == 'True' ">23</SupportedOSPlatformVersion>
+
+    <IsMauiProject>$(MSBuildProjectName.Contains('Maui'))</IsMauiProject>
+    <UseMaui>$(IsMauiProject)</UseMaui>
+    <MSBuildSdkExtrasVersion>3.0.44</MSBuildSdkExtrasVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">

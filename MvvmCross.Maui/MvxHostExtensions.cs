@@ -1,13 +1,15 @@
+using MvvmCross.IoC;
+
 namespace MvvmCross.Hosting
 {
     public static class MvxHostExtensions
     {
         public static MauiAppBuilder UseMvvmCross(
             this MauiAppBuilder builder,
-            IServiceCollection serviceCollection,
+            IMvxIoCProvider serviceCollection,
             Action<MvxHostBuilder> configureMvvmCross)
         {
-            var mvxBuilder = new MvxHostBuilder(serviceCollection);
+            var mvxBuilder = new MvxHostBuilder(builder, serviceCollection);
             configureMvvmCross(mvxBuilder);
 
             return builder;

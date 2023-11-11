@@ -1,5 +1,7 @@
 //using Microsoft.Extensions.Logging;
 
+using MvvmCross.Hosting;
+
 namespace Playground.Maui
 {
     public static class MauiProgram
@@ -9,6 +11,10 @@ namespace Playground.Maui
             var builder = MauiApp.CreateBuilder();
             builder
                 .UseMauiApp<App>()
+                .UseMvvmCross(null, hostBuilder =>
+                {
+                    
+                })
                 .ConfigureFonts(fonts =>
                 {
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");

@@ -6,7 +6,7 @@
     <!-- Uncomment to also build the tizen app. You will need to install tizen by following this: https://github.com/Samsung/Tizen.NET -->
     <!-- <TargetFrameworks>$(TargetFrameworks);net8.0-tizen</TargetFrameworks> -->
     <UseMaui>true</UseMaui>
-    <!--<SingleProject>true</SingleProject>-->
+    <SingleProject>true</SingleProject>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
@@ -17,7 +17,20 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\MvvmCross.Ioc.Maui\MvvmCross.Ioc.Maui.csproj" />
     <ProjectReference Include="..\MvvmCross\MvvmCross.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Platforms\Android\" />
+    <Folder Include="Platforms\MacCatalyst\" />
+    <Folder Include="Platforms\Windows\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="MvxWindowManager.cs">
+      <ExcludeFromCurrentConfiguration>true</ExcludeFromCurrentConfiguration>
+    </Compile>
   </ItemGroup>
 
 </Project>

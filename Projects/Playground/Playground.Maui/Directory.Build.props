@@ -1,0 +1,26 @@
+<Project>
+  <PropertyGroup>
+    <Copyright>Copyright (c) .NET Foundation and Contributors</Copyright>
+    <PackageLicenseExpression>MS-PL</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/MvvmCross/MvvmCross</PackageProjectUrl>
+    <PackageIcon>icon.png</PackageIcon>
+    <Authors>.NET Foundation and Contributors</Authors>
+    <Owners>MvvmCross;slodge;cheesebaron</Owners>
+    <PackageTags>mvvm;mvvmcross;xamarin;android;ios;mac</PackageTags>
+    <PackageReleaseNotes>https://github.com/MvvmCross/MvvmCross/blob/develop/CHANGELOG.md</PackageReleaseNotes>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <NeutralLanguage>en-US</NeutralLanguage>
+
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <RepositoryUrl>https://github.com/MvvmCross/MvvmCross</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <Product>$(AssemblyName) ($(TargetFramework))</Product>
+    <Version>8.1.0-net6.1</Version>
+
+    <!--<Nullable>enable</Nullable>-->
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>true</ImplicitUsings>
+    <NoWarn>$(NoWarn);CS0109;CS0108;CS0618;CS0114;NU1603;CS1591</NoWarn>
+
+  </PropertyGroup>
+</Project>

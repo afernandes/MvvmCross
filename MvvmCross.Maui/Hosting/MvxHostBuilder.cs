@@ -1,34 +1,58 @@
 #nullable enable
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using MvvmCross.Ioc.Maui;
 using MvvmCross.IoC;
+using MvvmCross.Maui;
+using MvvmCross.Maui.Hosting;
 using MvvmCross.Navigation;
 
 namespace MvvmCross.Hosting;
 
 public class MvxHostBuilder : IMvxHostBuilder
 {
-    //private List<Action<IContainerRegistry>> _registrations { get; }
+    private List<Action<IMvxIoCProvider>> _registrations { get; }
     private List<Action<IMvxIoCProvider>> _initializations { get; }
     private IMvxIoCProvider _container { get; }
     private Func<IMvxIoCProvider, IMvxNavigationService, Task> _onAppStarted;
 
-    public Func<IServiceCollection, IServiceProvider> ConfigureContainer { get; }
-    public IServiceCollection Services { get; }
+    public Func<IMvxIoCProvider, IServiceProvider> ConfigureContainer { get; }
+    public IMvxIoCProvider Container { get; }
+
+    /// <summary>
+    /// Gets the associated <see cref="MauiAppBuilder"/>.
+    /// </summary>
+    public MauiAppBuilder MauiBuilder { get; }
 
     public MvxHostBuilder(
-        IServiceCollection? serviceCollection = null,
-        Func<IServiceCollection, IServiceProvider>? configureContainer = null)
+        MauiAppBuilder builder,
+        IMvxIoCProvider? container = null,
+        Func<IMvxIoCProvider, IServiceProvider>? configureContainer = null)
     {
-        Services = serviceCollection ?? new ServiceCollection();
-        ConfigureContainer = configureContainer ?? (s => s.BuildServiceProvider());
+        _registrations = new List<Action<IMvxIoCProvider>>();
+        _initializations = new List<Action<IMvxIoCProvider>>();
+
+        Container = container ?? MvxIoCProvider.Initialize(null);
+        ConfigureContainer = configureContainer ?? (s => new MvxServiceProvider(s));
+
+        Container.RegisterType(() => this);
+        Container.RegisterSingleton(typeof(IMauiInitializeService), new MvxInitializationService());
+
+        Container.RegisterSingleton(typeof(IMvxIoCProvider), Container);
+        Container.RegisterType<IServiceScopeFactory, MvxIocServiceScopeFactory>();
+        Container.RegisterType<IServiceScope, MvxIocServiceScope>();
+
+        Container.RegisterType<IWindowCreator, MvxWindowManager>();
+        
+
+        MauiBuilder = builder;
+        MauiBuilder.ConfigureContainer(new MvxServiceProviderFactory(Container));
     }
 
     public virtual IMvxHost Build()
     {
-        ConfigureDefaultNullLogging(Services);
-        var serviceCollection = ConfigureContainer(Services);
+        ConfigureDefaultNullLogging(Container);
+        var serviceCollection = ConfigureContainer(Container);
         var loggerFactory = serviceCollection.GetRequiredService<ILoggerFactory>();
 
         var host = new MvxHost(serviceCollection, loggerFactory);
@@ -38,10 +62,10 @@ public class MvxHostBuilder : IMvxHostBuilder
         return host;
     }
 
-    private static void ConfigureDefaultNullLogging(IServiceCollection services)
+    private static void ConfigureDefaultNullLogging(IMvxIoCProvider services)
     {
-        services.AddSingleton<ILoggerFactory, NullLoggerFactory>();
-        services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+        services.RegisterSingleton(typeof(ILoggerFactory), new NullLoggerFactory());
+        services.RegisterSingleton(typeof(ILogger<>), typeof(NullLogger<>));
     }
 
     private bool _initialized;
@@ -52,32 +76,6 @@ public class MvxHostBuilder : IMvxHostBuilder
 
         _initialized = true;
         _initializations.ForEach(action => action(_container));
-
-        //if (_container.IsRegistered<IModuleCatalog>() && _container.Resolve<IModuleCatalog>().Modules.Any())
-        //{
-        //    var manager = _container.Resolve<IModuleManager>();
-        //    manager.Run();
-        //}
-
-        //var navRegistry = _container.Resolve<IMvxNavigationService>();
-        //if (!navRegistry.CanNavigate(NavigationPage))
-        //{
-        //    var registry = _container as IContainerRegistry;
-        //    registry
-        //        .Register<PrismNavigationPage>(() => new PrismNavigationPage())
-        //        .RegisterInstance(new ViewRegistration
-        //        {
-        //            Name = nameof(NavigationPage),
-        //            View = typeof(PrismNavigationPage),
-        //            Type = ViewType.Page
-        //        });
-        //}
-
-        //if (!navRegistry.IsRegistered(nameof(TabbedPage)))
-        //{
-        //    var registry = _container as IContainerRegistry;
-        //    registry.RegisterForNavigation<TabbedPage>();
-        //}
     }
 
 

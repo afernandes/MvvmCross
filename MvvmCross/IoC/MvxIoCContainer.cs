@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MS-PL license.
 // See the LICENSE file in the project root for more information.
 #nullable enable
+using System.Collections;
 using System.Reflection;
 using Microsoft.Extensions.Logging;
 using MvvmCross.Base;
@@ -19,6 +20,8 @@ namespace MvvmCross.IoC
         private readonly IMvxIocOptions _options;
         private readonly IMvxPropertyInjector? _propertyInjector;
         private readonly IMvxIoCProvider? _parentProvider;
+
+        private readonly Dictionary<Type, IList<Func<object>>> _iEnumerableFactories = new Dictionary<Type, IList<Func<object>>>();
 
         private IMvxIocOptions Options => _options;
 
@@ -195,6 +198,145 @@ namespace MvvmCross.IoC
             public ResolverType ResolveType => ResolverType.DynamicPerResolve;
         }
 
+        public void RegisterType<TTInterface, TImplementation>() where TTInterface : class where TImplementation : class, TTInterface
+        {
+            RegisterTypeInternal<TTInterface, TImplementation>();
+
+            var t = typeof(TTInterface);
+            if (!_iEnumerableFactories.TryGetValue(t, out var factories))
+            {
+                factories = new List<Func<object>>();
+                _iEnumerableFactories.Add(t, factories);
+            }
+            // HACK: in order to NOT override an existing service in MvvmCross and still be able to directly resovle the concrete implementation
+            // and return it in an IEnuemrable<tInterface>, we need to register the implementation as itself and resovle it later on
+            RegisterTypeInternal<TImplementation, TImplementation>();
+            factories.Add(Resolve<TImplementation>);
+
+            // finally register a factory which uses the cached registrations to actually resolve an IEnumerable of tInterface :-)
+            RegisterTypeInternal<IEnumerable<TTInterface>>(() => _iEnumerableFactories[t].Select(f => f()).Cast<TTInterface>().ToArray());
+        }
+
+        public void RegisterType<TInterface>(Func<TInterface> constructor) where TInterface : class
+        {
+            RegisterTypeInternal(constructor);
+
+
+            var t = typeof(TInterface);
+            if (!_iEnumerableFactories.TryGetValue(t, out var factories))
+            {
+                factories = new List<Func<object>>();
+                _iEnumerableFactories.Add(t, factories);
+            }
+            factories.Add(Resolve<TInterface>);
+
+            // finally register a factory which uses the cached registrations to actually resolve an IEnumerable of tInterface :-)
+            RegisterTypeInternal<IEnumerable<TInterface>>(() => _iEnumerableFactories[t].Select(f => f()).Cast<TInterface>().ToArray());
+        }
+
+        public void RegisterType(Type tInterface, Func<object> constructor)
+        {
+            RegisterTypeInternal(tInterface, constructor);
+
+            if (!_iEnumerableFactories.TryGetValue(tInterface, out var factories))
+            {
+                factories = new List<Func<object>>();
+                _iEnumerableFactories.Add(tInterface, factories);
+            }
+            factories.Add(constructor);
+            var enumType = typeof(IEnumerable<>).MakeGenericType(tInterface);
+            // finally register a factory which uses the cached registrations to actually resolve an IEnumerable of tInterface :-)
+            RegisterTypeInternal(enumType, () => _iEnumerableFactories[tInterface].Select(f => f()).CreateEnumerable(tInterface));
+        }
+
+        public void RegisterType(Type tInterface, Type tImplementation)
+        {
+            RegisterTypeInternal(tInterface, tImplementation);
+
+
+            if (!_iEnumerableFactories.TryGetValue(tInterface, out var factories))
+            {
+                factories = new List<Func<object>>();
+                _iEnumerableFactories.Add(tInterface, factories);
+            }
+            // HACK: in order to NOT override an existing service in MvvmCross and still be able to directly resovle the concrete implementation
+            // and return it in an IEnuemrable<tInterface>, we need to register the implementation as itself and resovle it later on
+            RegisterTypeInternal(tImplementation, tImplementation);
+            factories.Add(() => Resolve(tImplementation));
+
+            var enumType = typeof(IEnumerable<>).MakeGenericType(tInterface);
+            // finally register a factory which uses the cached registrations to actually resolve an IEnumerable of tInterface :-)
+            RegisterTypeInternal(enumType, () => _iEnumerableFactories[tInterface].Select(f => f()).CreateEnumerable(tInterface));
+        }
+
+        public void RegisterSingleton<TInterface>(TInterface theObject) where TInterface : class
+        {
+            RegisterSingletonInternal(theObject);
+
+
+            var t = typeof(TInterface);
+            if (!_iEnumerableFactories.TryGetValue(t, out var factories))
+            {
+                factories = new List<Func<object>>();
+                _iEnumerableFactories.Add(t, factories);
+            }
+            factories.Add(() => theObject);
+            // finally register a factory which uses the cached registrations to actually resolve an IEnumerable of tInterface :-)
+            RegisterTypeInternal<IEnumerable<TInterface>>(() => _iEnumerableFactories[t].Select(f => f()).Cast<TInterface>().ToArray());
+        }
+
+        public void RegisterSingleton(Type tInterface, object theObject)
+        {
+            RegisterSingletonInternal(tInterface, theObject);
+
+
+            var t = tInterface;
+            if (!_iEnumerableFactories.TryGetValue(t, out var factories))
+            {
+                factories = new List<Func<object>>();
+                _iEnumerableFactories.Add(t, factories);
+            }
+            factories.Add(() => theObject);
+            var enumType = typeof(IEnumerable<>).MakeGenericType(t);
+            // finally register a factory which uses the cached registrations to actually resolve an IEnumerable of tInterface :-)
+            //RegisterTypeInternal(enumType, () => _iEnumerableFactories[t].Select(f => f()).CreateEnumerable(tInterface));
+            RegisterTypeInternal(enumType, () => _iEnumerableFactories[t].Select(f => f()).ToArray());
+        }
+
+        public void RegisterSingleton<TInterface>(Func<TInterface> theConstructor) where TInterface : class
+        {
+            RegisterSingletonInternal(theConstructor);
+
+
+            var t = typeof(TInterface);
+            if (!_iEnumerableFactories.TryGetValue(t, out var factories))
+            {
+                factories = new List<Func<object>>();
+                _iEnumerableFactories.Add(t, factories);
+            }
+            factories.Add(Resolve<TInterface>);
+
+            // finally register a factory which uses the cached registrations to actually resolve an IEnumerable of tInterface :-)
+            RegisterTypeInternal<IEnumerable<TInterface>>(() => _iEnumerableFactories[t].Select(f => f()).Cast<TInterface>().ToArray());
+        }
+
+        public void RegisterSingleton(Type tInterface, Func<object> theConstructor)
+        {
+            RegisterSingletonInternal(tInterface, theConstructor);
+
+            var t = tInterface;
+            if (!_iEnumerableFactories.TryGetValue(t, out var factories))
+            {
+                factories = new List<Func<object>>();
+                _iEnumerableFactories.Add(t, factories);
+            }
+
+            factories.Add(theConstructor);
+            var enumType = typeof(IEnumerable<>).MakeGenericType(t);
+            // finally register a factory which uses the cached registrations to actually resolve an IEnumerable of tInterface :-)
+            RegisterTypeInternal(enumType, () => _iEnumerableFactories[t].Select(f => f()).CreateEnumerable(tInterface));
+        }
+
         public bool CanResolve<T>()
             where T : class
         {
@@ -295,29 +437,36 @@ namespace MvvmCross.IoC
             }
         }
 
-        public void RegisterType<TInterface, TToConstruct>()
+        public void RegisterTypeInternal<TInterface, TToConstruct>()
             where TInterface : class
             where TToConstruct : class, TInterface
         {
-            RegisterType(typeof(TInterface), typeof(TToConstruct));
+            RegisterTypeInternal(typeof(TInterface), typeof(TToConstruct));
         }
 
-        public void RegisterType<TInterface>(Func<TInterface> constructor)
+        public void RegisterTypeInternal<TInterface>(Func<TInterface> constructor)
             where TInterface : class
         {
             var resolver = new FuncConstructingResolver(constructor);
             InternalSetResolver(typeof(TInterface), resolver);
         }
 
-        public void RegisterType(Type t, Func<object?> constructor)
+        public void RegisterTypeInternal(Type t, Func<object?> constructor)
         {
             var resolver = new FuncConstructingResolver(() =>
             {
                 var ret = constructor();
                 if (ret != null && !t.IsInstanceOfType(ret))
                 {
-                    throw new MvxIoCResolveException("Constructor failed to return a compatibly object for type {0}",
-                        t.FullName);
+                    try
+                    {
+                        ret = ExtendedMvxIocProviderExtensions.CreateEnumerable((IEnumerable<object>)ret, t.GenericTypeArguments[0]);
+                    }
+                    catch (Exception e)
+                    {
+                        throw new MvxIoCResolveException("Constructor failed to return a compatibly object for type {0}",
+                            t.FullName);
+                    }
                 }
 
                 return ret;
@@ -326,7 +475,7 @@ namespace MvvmCross.IoC
             InternalSetResolver(t, resolver);
         }
 
-        public void RegisterType(Type tFrom, Type tTo)
+        public void RegisterTypeInternal(Type tFrom, Type tTo)
         {
             IResolver resolver;
             if (tFrom.GetTypeInfo().IsGenericTypeDefinition)
@@ -341,24 +490,24 @@ namespace MvvmCross.IoC
             InternalSetResolver(tFrom, resolver);
         }
 
-        public void RegisterSingleton<TInterface>(TInterface theObject)
+        public void RegisterSingletonInternal<TInterface>(TInterface theObject)
             where TInterface : class
         {
-            RegisterSingleton(typeof(TInterface), theObject);
+            RegisterSingletonInternal(typeof(TInterface), theObject);
         }
 
-        public void RegisterSingleton(Type tInterface, object theObject)
+        public void RegisterSingletonInternal(Type tInterface, object theObject)
         {
             InternalSetResolver(tInterface, new SingletonResolver(theObject));
         }
 
-        public void RegisterSingleton<TInterface>(Func<TInterface> theConstructor)
+        public void RegisterSingletonInternal<TInterface>(Func<TInterface> theConstructor)
             where TInterface : class
         {
-            RegisterSingleton(typeof(TInterface), theConstructor);
+            RegisterSingletonInternal(typeof(TInterface), theConstructor);
         }
 
-        public void RegisterSingleton(Type tInterface, Func<object> theConstructor)
+        public void RegisterSingletonInternal(Type tInterface, Func<object> theConstructor)
         {
             InternalSetResolver(tInterface, new ConstructingSingletonResolver(theConstructor));
         }
@@ -666,6 +815,24 @@ namespace MvvmCross.IoC
             }
 
             return true;
+        }
+    }
+
+    internal static class ExtendedMvxIocProviderExtensions
+    {
+        public static object CreateEnumerable(this IEnumerable<object> items, Type tInterface)
+        {
+            try
+            {
+                var list = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(tInterface));
+                foreach (var item in items)
+                    list.Add(item);
+                return list;
+            }
+            catch (Exception e)
+            {
+                return items;
+            }
         }
     }
 }

@@ -3,7 +3,7 @@ using MvvmCross.IoC;
 namespace MvvmCross.Ioc.Maui
 {
 
-    internal class MvxServiceProvider : IServiceProvider
+    public class MvxServiceProvider : IServiceProvider
     {
         private IMvxIoCProvider _container { get; }
 
